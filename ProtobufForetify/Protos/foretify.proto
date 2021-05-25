@@ -1,0 +1,340 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option csharp_namespace = "Morai.Protobuf.Foretify";
+
+package MoraiProtobufForetify;
+
+// The greeting service definition.
+service Foretify {    
+  // SSP API
+  rpc init (init_req) returns (init_resp) {}
+  rpc launch_simulator (launch_simulator_req) returns (launch_simulator_resp) {}
+  //rpc terminate_simulator (terminate_simulator_req) returns (terminate_simulator_resp) {}
+}
+
+// 7.1.1 actor_description
+message actor_description {
+  string actor_type = 1;						// Actor type (e.g: Ego, Vehicle, Pedestrian)
+  //unit length = 2;							// Actor¡¯s length (meters)
+  //unit width = 3;								// Actor¡¯s width (meters)
+  //unit height = 4;							// Actor¡¯s height (meters)
+  double length = 2;							// Actor¡¯s length (meters)
+  double width = 3;								// Actor¡¯s width (meters)
+  double height = 4;							// Actor¡¯s height (meters)
+  repeated property additional_property = 5;	// Optional additional properties used to describe the actor
+}
+
+// 7.1.2 actor_id_filter
+message actor_id_filter {
+	repeated int64 actors_id = 1;	// List of actor ids
+}
+
+// 7.1.3 actor_state
+message actor_state {
+	int64 actor_id = 1;							// Unique actor id
+	coord_6dof position = 2;					// Actor position - x,y are mandatory x,y,z: meters roll, pitch, yaw: radians
+	coord_6dof speed = 3;						// Actor speed (optional - in case this field is missing, Foretify will calculate speed based on position change), if this field exists then it must contain at least x,y x,y,z: meters/sec roll, pitch, yaw: radians/sec
+	coord_6dof acceleration = 4;				// Actor acceleration (optional - in case this field is missing Foretify will calculate acceleration base on either speed or position change), if this field exists then it must contain at least x,y x,y,z: meters/sec^2 roll, pitch, yaw: radians/sec^2
+	collision_info collision_info = 5;			// Collision info - will be filled in case of collision (only if simulator supports collision detection) Should include collision occurred in the last step
+	repeated property additional_property = 6;	// Optional additional properties used to describe the actor
+}
+
+// 7.1.4 
+message actors_filter {
+	actor_id_filter id_filter = 1;		// Filtering based on actor id
+}
+
+// 7.1.5 collision_info
+message collision_info {
+	int64 collide_with_actor_id = 1;		// Id of the actor, collided with
+}
+
+// 7.1.6 coord_6dof
+message coord_6dof {
+	unit x = 1;
+	unit y = 2;
+	unit z = 3;
+	unit roll = 4;
+	unit pitch = 5;
+	unit yaw = 6;
+	//double x = 1;
+	//double y = 2;
+	//double z = 3;
+	//double roll = 4;
+	//double pitch = 5;
+	//double yaw = 6;
+}
+
+// 7.1.7 create_actor_req
+message create_actor_req {
+	int64 actor_id = 1;							// Unique actor id
+	actor_description actor_description = 2;	// Actor¡¯s description
+	coord_6dof create_position = 3;				// Requested create position
+	coord_6dof create_speed = 4;				// Requested create speed (optional)
+	coord_6dof create_acceleration = 5;			// Requested create acceleration (optional)
+}
+
+// 7.1.8 create_actor_resp
+message create_actor_resp {
+	status status = 1;							//  General status (contains info/warning/error messages)
+	actor_description actor_description = 2;	// Description of created actor
+}
+
+// 7.1.9 end_simulation_req
+// End simulation request
+message end_simulation_req {
+	
+}
+
+// 7.1. 10 end_simulation_resp
+message end_simulation_resp {
+	status status = 1;			// General status (contains info/warning/error messages)
+}
+
+// 7.1.11 get_actors_states_req
+message get_actors_states_req {
+	actors_filter actors_filter = 1;	// Filter defining which actors to return in response If this value is not set then return all actors in simulation
+}
+
+// 7.1.12 get_actors_states_resp
+message get_actors_states_resp {
+	status status = 1;
+	repeated actor_state actor_state = 2;
+}
+
+// 7.1.13. init_req
+message init_req {
+	simulation_info info = 1;							// Simulation info
+	real_world_location_and_time init_geo_time = 2;		// The real-world global location, date and time in the day (used to provide appropriate lighting conditions)
+}
+
+// 7.1.14. init_resp
+message init_resp {
+	status status = 1;		// General status (contains info/warning/error messages)
+}
+
+// 7.1.15 launch_simulator_req
+message launch_simulator_req {
+	string connection_string = 1;	// Requested connection string (format is implementation dependant)
+}
+
+// 7.1.16. launch_simulator_resp
+message launch_simulator_resp {
+	status status = 1;				// General status (contains info/warning/error messages)
+	string connection_string = 2;	// Actual connection string (format is implementation dependant)
+}
+
+// 7.1.17 property
+message property {
+	string name = 1;		// Name of the property
+	string value = 2;		// value
+}
+
+// 7.1.18. real_world_location_and_time
+message real_world_location_and_time {
+	double lon = 1;				// Map origin location in global geographic longitude
+	double lat = 2;				// Map origin location in global geographic latitude
+	double azimuth = 3;			// Map y-axis direction rotated clockwise relative to the global geographic North
+	string date = 4;			// DD:MM:YY
+	string time_of_day = 5;		// HH:MM:SS (24-hour clock)
+}
+
+// 7.1.19. set_actor_params_req
+message set_actor_params_req {
+	int64 actor_id = 1;						// Unique actor id
+	bool enable_collision_detection = 2;	// Enable/Disable collision detection (if supported by simulator)
+}
+
+// 7.1.20 set_actor_params_resp
+message set_actor_params_resp {
+	status status = 1;			// General status (contains info/warning/error messages)
+}
+
+// 7.1.21 set_external_controller_move_req
+message set_external_controller_move_req {
+	int64 actor_id = 1;							// Unique actor id
+	coord_6dof destination_position = 2;		// Destination position
+	bool avoid_collisions_with_npc = 3;			// Flag indicating whether during this move, actor should try to avoid colliding with other actors
+	bool avoid_collisions_with_ego = 4;			// Flag indicating whether during this move, actor should try to avoid colliding with ego car
+	repeated property additional_property = 5;	// Additional custom properties
+} 
+
+// 7.1.22 set_move_resp
+message set_move_resp {
+	status status =1;							// General status (contains info/warning/error messages)
+}
+
+// 7.1.23 set_steer_and_pedals_move_req
+message set_steer_and_pedals_move_req {
+	int64 actor_id = 1;										// Unique actor id
+	int64 start_time_ms = 2;								// Start time of the move
+	int64 end_time_ms = 3;									// End time of the move
+	repeated double throttle_brake = 4;						// List of throttle/brake values for each step (units depend on throttle_brake_unit)
+	throttle_brake_unit_enum throttle_brake_unit = 5;		// Unit of throtle brake values
+	repeated double steer = 6;								// List of steering values for each step (units depend on steer_unit)
+	steer_unit_enum steer_unit = 7;							// Unit of steer values
+}
+
+// 7.1.24 set_time_of_day_req
+message set_time_of_day_req {
+	string time_of_day = 1;			// Requested time of day (Either specific time using: HH:mm:ss format or custom string specific to simulator)
+}
+
+// 7.1.25 set_time_of_day_resp
+message set_time_of_day_resp{
+	status status = 1;		// General status (contains info/warning/error messages)
+}
+
+// 7.1.26 set_weather_req
+message set_weather_req {
+	string weather = 1;				// Requested weather (custom string)
+}
+
+// 7.1.27 set_weather_resp
+message set_weather_resp {
+	status status = 1;			// General status (contains info/warning/error messages)
+	string weather = 2;			// Actual weather (custom string)
+}
+
+// 7.1.28 set_xy_trajectory_move_req
+message set_xy_trajectory_move_req {
+	int64 actor_id = 1;					// Unique actor id
+	int64 start_time_ms = 2;			// Start time of` the move
+	int64 end_time_ms = 3;				// End time of the move
+	repeated coord_6dof polyline = 4;	// List of trajectory target points (Only x,y coordinates are mandatory)
+}
+
+// 7.1.29 sim_command_req
+message sim_command_req {
+	string command = 1;				// Custom simulation command
+}
+
+// 7.1.30 sim_command_resp
+message sim_command_resp {
+	status status = 1;				// General status (contains info/warning/error messages)
+	string response = 2;			// Command response
+}
+
+// 7.1.31 simulation_info
+message simulation_info {
+	int64 step_size_ms = 1;						// The size of simulation step size in milliseconds
+	string map_info = 2;						// Map info (format is implementation dependant)
+	traffic_side_enum traffic_side = 3;			// Sets the traffic side for current simulation
+	bool headless_simulation = 4;				// If set to TRUE, simulation should run in headless mode
+	bool pause_at_start = 5;					// If set to TRUE, simulation should start in paused mode
+	repeated property additional_property = 6;	// Additional server properties (optional)
+}
+
+// 7.1.32 start_simulation_req
+message start_simulation_req {
+	string connection_string = 1;			// Simulator server connection string (format is implementation dependant)
+}
+
+// 7.1.33 start_simulation_resp
+message start_simulation_resp {
+	status status = 1;				// General status (contains info/warning/error messages)
+}
+
+// 7.1.34 start_step_req
+message start_step_req {
+	int64 requested_sim_time_ms = 1;		// Expected simulation time after this step is complete
+}
+
+// 7.1.35 start_step_resp
+message start_step_resp {
+	status status = 1;				// General status (contains info/warning/error messages)
+}
+
+// 7.1.36 status
+message status {
+	repeated string info = 1;		// info messages
+	repeated string warning = 2;	// Warning messages
+	repeated string error = 3;		// Error messages
+}
+
+// 7.1.37 terminate_simulator_req
+// Request to terminate simulator server Should be used only if simulator server
+// should be launched by foretify This setting is controlled using
+// config.sim.sim_launch_type
+message terminate_simulator_req {
+
+}
+
+// 7.1.38 terminate_simulator_resp
+message terminate_simulator_resp {
+	status status = 1;				// General status (contains info/warning/error messages)
+}
+
+// 7.1.39 unit 
+message unit {
+	double value = 1;			// Value
+}
+
+// 7.1.40 wait_start_simulation_req
+message wait_start_simulation_req {
+	int64 max_wait_ms = 1;		// Maximum time allowed to wait (in milliseconds) 
+								// If start simulation attempt is not complete within allowed time, 
+								// an error message should be returned When value is set to 0, SSP should wait forever (or until Foretify disconnects from SSP)
+}
+
+// 7.1.41 wait_start_simulation_resp
+message wait_start_simulation_resp {
+	status status = 1;	// General status (contains info/warning/error messages)
+}
+
+// 7.1.42 wait_step_req
+message wait_step_req {
+	int64 max_wait_ms = 1;	// Maximum time allowed to wait (in milliseconds) If step is
+							// not complete within allowed time, an error message
+							// should be returned When value is set to 0, SSP should
+							// wait forever (or until Foretify disconnects from SSP)
+}
+
+// 7.1.43 wait_step_resp
+message wait_step_resp {
+	status status = 1;			// General status (contains info/warning/error messages)
+	int64 new_sim_time_ms = 2;  //  Updated simulation time This value can be set to 0 if time is not controlled by SSP
+}
+
+// 7.1.44 steer_unit_enum
+enum steer_unit_enum {
+	STEER_UNIT_UNKNOWN = 0;
+	STEER_UNIT_PERCENT = 1;
+	STEER_UNIT_RADIAN = 2;
+}
+
+// 7.1.45 throttle_brake_unit_enum
+enum throttle_brake_unit_enum {
+	THROTTLE_BREAK_UNIT_UNKNOWN = 0;
+	THROTTLE_BREAK_UNIT_PERCENT = 1;
+	THROTTLE_BREAK_UNIT_NEWTON = 2;
+}
+
+// 7.1.46 traffic_side_enum
+enum traffic_side_enum	{
+	TRAFFIC_SIDE_RIGHT = 0;		// Right-hand traffic
+	TRAFFIC_SIDE_LEFT = 1;		// Left-hand traffic
+}
+
+// The response message containing the greetings
+message HelloRequest{
+	string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}
